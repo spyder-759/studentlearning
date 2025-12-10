@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Learning Platform</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden-view { display: none !important; }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3498db; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Selection Chips */
+        .topic-chip { transition: all 0.2s; cursor: pointer; user-select: none; }
+        .topic-chip.selected { background-color: #eff6ff; border-color: #2563eb; color: #1e40af; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1); transform: translateY(-1px); }
+        .topic-chip:hover:not(.disabled) { border-color: #93c5fd; }
+        .topic-chip.disabled { opacity: 0.5; cursor: not-allowed; background-color: #f3f4f6; border-color: #e5e7eb; color: #9ca3af; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- LOADING OVERLAY -->
+    <div id="global-loader" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center">
+        <div class="loader w-10 h-10 border-4 border-blue-600 border-t-transparent"></div>
+        <p class="mt-4 text-gray-500 text-sm">Connecting to Server...</p>
+    </div>
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="flex-1 flex flex-col relative opacity-0 transition-opacity duration-500">
+        
+        <!-- HEADER -->
+        <header id="main-header" class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-50 hidden-view">
+            <div class="flex items-center gap-2">
+                <!-- GLOBAL BACK ARROW -->
+                <button id="global-back-btn" onclick="window.goBack()" class="hidden mr-2 p-2 hover:bg-gray-100 rounded-full text-gray-600 transition" title="Go Back">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+
+                <div class="flex items-center gap-2 text-blue-800 font-bold text-xl cursor-pointer" onclick="window.navigate('dashboard')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                    <span class="hidden sm:inline">Student Portal</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="header-user-name" class="hidden md:block text-sm font-medium text-gray-600">Student</span>
+                <button onclick="window.handleLogout()" class="text-red-500 hover:text-red-700 flex items-center gap-1 font-medium text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- VIEWS -->
+
+        <!-- 1. LOGIN VIEW -->
+        <div id="view-login" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-indigo-600 to-purple-700 hidden-view">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md fade-in">
+                <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Welcome Back</h2>
+                <p class="text-center text-gray-500 mb-6">Login to access your dashboard</p>
+                <form id="login-form" class="space-y-4">
+                    <input type="tel" id="login-phone" placeholder="Mobile Number" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                    <input type="password" id="login-pass" placeholder="Password" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                    <button type="submit" id="btn-login-submit" class="w-full bg-purple-600 text-white p-3 rounded-lg font-bold hover:bg-purple-700 transition shadow-lg flex justify-center items-center gap-2">
+                        Login
+                    </button>
+                </form>
+                <p class="mt-4 text-center text-gray-600">
+                    New here? <button onclick="window.navigate('register')" class="text-purple-600 font-semibold hover:underline">Register</button>
+                </p>
+            </div>
+        </div>
+
+        <!-- 2. REGISTER VIEW -->
+        <div id="view-register" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-blue-500 to-indigo-600 hidden-view">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md fade-in">
+                <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Create Account</h2>
+                <form id="register-form" class="space-y-4">
+                    <input type="text" id="reg-name" placeholder="Full Name" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="email" id="reg-email" placeholder="Email ID" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="tel" id="reg-phone" placeholder="Mobile Number" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="password" id="reg-pass" placeholder="Create Password" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <button type="submit" id="btn-reg-submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg flex justify-center items-center gap-2">
+                        Create Account
+                    </button>
+                </form>
+                <p class="mt-4 text-center text-gray-600">
+                    Already have an account? <button onclick="window.navigate('login')" class="text-blue-600 font-semibold hover:underline">Login</button>
+                </p>
+            </div>
+        </div>
+
+        <!-- 3. DASHBOARD VIEW -->
+        <div id="view-dashboard" class="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full hidden-view fade-in">
+            <!-- Profile Card -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6 flex flex-col sm:flex-row items-center gap-6 border border-gray-100">
+                <div class="relative group">
+                    <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-100 bg-gray-200 relative">
+                        <img id="profile-img" src="" alt="Profile" class="w-full h-full object-cover hidden">
+                        <div id="profile-placeholder" class="w-full h-full flex items-center justify-center text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <!-- Upload Spinner -->
+                        <div id="upload-spinner" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+                            <div class="loader w-6 h-6 border-white border-t-transparent"></div>
+                        </div>
+                    </div>
+                    <label class="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-md transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <input type="file" accept="image/*" class="hidden" onchange="window.handleImageUpload(event)">
+                    </label>
+                </div>
+                <div class="text-center sm:text-left flex-1">
+                    <h2 id="display-name" class="text-2xl font-bold text-gray-800">Student Name</h2>
+                    <p id="display-class-sem" class="text-gray-500">Select Class & Semester</p>
+                </div>
+                <div class="bg-blue-50 px-4 py-2 rounded-lg text-center">
+                    <span class="block text-xs text-gray-500 font-bold uppercase">Last Quiz</span>
+                    <span id="display-score" class="text-xl font-bold text-blue-600">--</span>
+                </div>
+            </div>
+
+            <!-- Selection Steps -->
+            
+            <!-- Step 1: Class Selection -->
+            <div id="step-class" class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-gray-700">Select Your Class</h3>
+                <div id="class-grid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+            </div>
+
+            <!-- Step 2: Semester Selection -->
+            <div id="step-sem" class="bg-white rounded-xl shadow-sm p-6 mb-6 hidden">
+                <div class="flex items-center gap-2 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Select Semester</h3>
+                </div>
+                <div id="sem-grid" class="grid grid-cols-2 gap-3"></div>
+            </div>
+
+            <!-- Step 3: Topic Selection -->
+            <div id="step-topics" class="bg-white rounded-xl shadow-sm p-6 mb-6 hidden animate-fade-in">
+                <div class="flex flex-col gap-4 border-b pb-4 mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Choose Your Subjects</h3>
+                            <p class="text-sm text-gray-500">Select <span class="font-bold text-blue-600">5 to 8</span> topics</p>
+                        </div>
+                        <div id="topic-count" class="text-lg font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full">0/8</div>
+                    </div>
+                </div>
+                <div id="topic-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 max-h-96 overflow-y-auto pr-2 no-scrollbar">
+                    <!-- Topics Injected Here -->
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button id="btn-save-topics" onclick="window.saveTopics()" disabled class="bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-bold shadow-md transition flex items-center gap-2">
+                        Save & Continue
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Dashboard Content (Saved Topics) -->
+            <div id="step-dashboard-content" class="hidden animate-fade-in">
+                 <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Your Syllabus</h3>
+                    <button onclick="window.resetSelection('topics')" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Edit Subjects
+                    </button>
+                </div>
+                <div id="subject-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- 4. STUDY VIEW -->
+        <div id="view-study" class="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full hidden-view fade-in">
+            <h1 id="study-title" class="text-2xl font-bold text-gray-800 mb-6">Subject Title</h1>
+
+            <!-- VIDEO CONTAINER (Thumbnail Link Method) -->
+            <div id="video-container" class="bg-black rounded-xl overflow-hidden shadow-lg aspect-video w-full mb-6 relative group">
+                <a id="video-link" href="#" target="_blank" class="block w-full h-full relative cursor-pointer">
+                    <img id="video-thumb" src="" alt="Video Thumbnail" class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition duration-300">
+                    <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 group-hover:bg-opacity-20 transition">
+                        <div class="bg-red-600 text-white rounded-full px-6 py-3 shadow-xl transform group-hover:scale-105 transition duration-300 flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg>
+                            <span class="font-bold">Watch Class</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                        Fundamentals
+                    </h3>
+                    <p id="study-text" class="text-gray-600 text-sm leading-relaxed">Content text...</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-purple-800 mb-3 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
+                        Algorithm / Logic
+                    </h3>
+                    <pre id="study-algo" class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre-wrap">Algo text...</pre>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center">
+                <h3 class="text-lg font-bold text-blue-900 mb-2">Test Your Knowledge</h3>
+                <p class="text-blue-700 mb-4">10 Questions • Immediate Feedback</p>
+                <button onclick="window.startQuiz()" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-700 hover:scale-105 transition transform flex items-center gap-2 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                    Start Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. QUIZ VIEW -->
+        <div id="view-quiz" class="flex-1 p-4 md:p-8 max-w-3xl mx-auto w-full hidden-view flex flex-col">
+            <div class="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center mb-6">
+                <button onclick="window.quitQuiz()" class="text-red-500 flex items-center gap-1 font-bold text-sm hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Quit
+                </button>
+                <div class="text-gray-800 font-bold">Question <span id="q-number">1</span>/10</div>
+                <div class="text-blue-600 font-bold">Score: <span id="q-score">0</span></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 mb-4 fade-in">
+                <h3 id="q-text" class="text-xl font-bold text-gray-800 leading-snug">Question text here?</h3>
+            </div>
+            <div id="q-options" class="grid grid-cols-1 gap-3 mb-6"></div>
+            <div id="q-feedback" class="hidden fade-in">
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                    <h4 class="font-bold text-blue-800 mb-1">Explanation:</h4>
+                    <p id="q-explanation" class="text-blue-900 text-sm">Explanation text.</p>
+                </div>
+                <button onclick="window.nextQuestion()" id="btn-next" class="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold text-lg hover:bg-indigo-700 shadow-lg flex items-center justify-center gap-2">
+                    Next Question 
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 6. RESULT VIEW -->
+        <div id="view-result" class="flex-1 flex items-center justify-center p-4 bg-gray-100 hidden-view">
+             <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center fade-in">
+                <div class="mb-6 flex justify-center" id="result-icon-container"></div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Quiz Completed</h2>
+                <p id="result-msg" class="text-xl font-bold mb-4">Excellent Work!</p>
+                <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div id="final-score" class="text-4xl font-bold text-blue-600">0 / 10</div>
+                    <p class="text-gray-500">Your Score</p>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <button onclick="window.startQuiz()" class="bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 flex items-center justify-center gap-2 shadow-md">
+                        Retry
+                    </button>
+                    <button onclick="window.navigate('dashboard')" class="text-gray-500 hover:text-gray-700 font-medium py-2">
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION -->
+    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-[200]">Msg</div>
+
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, updateDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // --- FIREBASE INIT ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = __app_id;
+
+        const getUsersCollection = () => collection(db, 'artifacts', appId, 'public', 'data', 'users');
+        const getProgressCollection = () => collection(db, 'artifacts', appId, 'public', 'data', 'progress');
+
+        // --- STATE ---
+        let state = {
+            currentUserDocId: null,
+            user: null, 
+            profile: { class: '', sem: '', pic: '', topics: [] }, // Note: profile.topics is now mostly for current view
+            enrolled: {}, // NEW: Cache for { "MCA_Semester 1": [topics...], ... }
+            selectedSubject: null,
+            quiz: { questions: [], index: 0, score: 0, answered: false },
+            tempTopics: [] // For selection screen
+        };
+
+        // --- DATA CONSTANTS ---
+        const COURSES = [
+            { name: "MCA", totalSemesters: 4 },
+            { name: "MBA", totalSemesters: 4 },
+            { name: "M.Sc Math", totalSemesters: 4 },
+            { name: "MA Odia", totalSemesters: 4 },
+            { name: "B.Tech", totalSemesters: 8 }
+        ];
+
+        // FULL SYLLABUS DATA
+        const COURSE_TOPICS = {
+            "MCA": [
+                "Programming in C and Python", "Data Structures and Algorithms", "Computer Organization and Architecture", "Discrete Mathematics", 
+                "Database Management Systems (DBMS)", "Operating Systems", "Object-Oriented Programming", "Software Engineering", 
+                "Computer Networks", "Web Technologies", "Artificial Intelligence & ML", "Cloud Computing", "Cyber Security", 
+                "Mobile Computing", "Optimization Techniques"
+            ],
+            "MBA": [
+                "Principles of Management", "Organizational Behavior", "Financial Accounting", "Managerial Economics", "Marketing Management",
+                "Human Resource Management", "Financial Management", "Operations Management", "Business Statistics", "Business Communication",
+                "Strategic Management", "MIS", "Business Ethics", "Business Law", "Entrepreneurship Development"
+            ],
+            "M.Sc Math": [
+                "Real Analysis", "Abstract Algebra", "Linear Algebra", "Complex Analysis", "ODE", "PDE", "Topology", "Functional Analysis",
+                "Numerical Analysis", "Probability and Statistics", "Differential Geometry", "Mathematical Modelling", "Discrete Mathematics",
+                "Mechanics", "Operations Research"
+            ],
+            "MA Odia": [
+                "History of Odia Literature", "Odia Poetry", "Odia Prose and Drama", "Linguistics", "Literary Criticism", "Folklore Studies",
+                "Modern Odia Literature", "Socio-Cultural History", "Comparative Literature", "Translation Studies", "Journalism in Odia",
+                "Grammar and Philology", "Tribal Culture", "Research Methodology", "Special Author Studies"
+            ],
+            "B.Tech": [
+                "Engineering Mathematics", "Engineering Physics", "Engineering Chemistry", "Basic Electrical Engineering", "Programming for Problem Solving",
+                "Data Structures & Algorithms", "Computer Organization", "Discrete Mathematics", "DBMS", "Operating Systems",
+                "Software Engineering", "Computer Networks", "Design & Analysis of Algorithms", "Web Technologies", "Environmental Science"
+            ]
+        };
+        
+        const STUDY_CONTENT = {
+            default: { video: "tpIctyqH29Q", title: "Course Overview", text: "Introduction to the selected subject.", algorithm: "1. Concept\n2. Theory\n3. Application" },
+            // Mappings for common topics
+            "Web Technologies": { video: "nu_pCVPKzTk", title: "Web Tech Fundamentals", text: "HTML, CSS, JS, React.", algorithm: "DOM Manipulation" },
+            "Web Technologies (HTML, CSS, JavaScript, PHP)": { video: "nu_pCVPKzTk", title: "Web Tech Fundamentals", text: "HTML, CSS, JS, React.", algorithm: "DOM Manipulation" },
+            "Operating Systems": { video: "26QPDBe-PFU", title: "OS Concepts", text: "Kernel, Threads, Memory.", algorithm: "Scheduling" },
+            "Data Structures and Algorithms": { video: "duDkHSMYmjQ", title: "Data Structures", text: "Arrays, Linked Lists, Trees.", algorithm: "Binary Search" },
+            "Data Structures & Algorithms": { video: "duDkHSMYmjQ", title: "Data Structures", text: "Arrays, Linked Lists, Trees.", algorithm: "Binary Search" },
+            "Artificial Intelligence & Machine Learning": { video: "JMUxmLyrhSk", title: "AI Basics", text: "Neural Networks, ML.", algorithm: "Backpropagation" },
+            "Cyber Security & Digital Forensics": { video: "jhXCTbFnK8o", title: "Cyber Security", text: "Encryption, Network Security.", algorithm: "RSA Encryption" }
+        };
+
+        const QUESTION_POOL = [
+            { id: 1, topic: 'web', question: "HTML stands for?", options: ["Hyper Text Markup Language", "Home Tool Markup Language", "Hyperlinks and Text Markup Language", "Hyper Tool Multi Language"], correct: 0, explanation: "Standard markup language for web." },
+            { id: 2, topic: 'os', question: "Core part of OS?", options: ["Shell", "Kernel", "CMD", "GUI"], correct: 1, explanation: "Kernel manages hardware resources." },
+            { id: 3, topic: 'ds', question: "LIFO structure?", options: ["Queue", "Stack", "Array", "Tree"], correct: 1, explanation: "Last In First Out." },
+            { id: 4, topic: 'web', question: "Largest heading?", options: ["<h6>", "<head>", "<h1>", "<header>"], correct: 2, explanation: "<h1> is the largest." },
+            { id: 5, topic: 'ai', question: "Father of AI?", options: ["Turing", "Babbage", "McCarthy", "Musk"], correct: 2, explanation: "John McCarthy coined the term." },
+            { id: 6, topic: 'crypto', question: "SSL stands for?", options: ["Secure Socket Layer", "Safe Soft Line", "Super Secure Link", "None"], correct: 0, explanation: "Secure Sockets Layer." },
+            { id: 7, topic: 'ds', question: "Binary Search complexity?", options: ["O(n)", "O(log n)", "O(1)", "O(n^2)"], correct: 1, explanation: "Halves search space each step." },
+            { id: 8, topic: 'os', question: "Deadlock condition count?", options: ["2", "3", "4", "5"], correct: 2, explanation: "Mutual Exclusion, Hold & Wait, No Preemption, Circular Wait." },
+            { id: 9, topic: 'web', question: "CSS color property?", options: ["text-color", "color", "font-color", "rgb"], correct: 1, explanation: "'color' sets text color." },
+            { id: 10, topic: 'prob', question: "Coin toss prob?", options: ["0.25", "0.5", "1", "0"], correct: 1, explanation: "1/2 chance." }
+        ];
+
+        // --- GLOBAL HELPER FUNCTIONS ---
+
+        window.navigate = (viewName) => {
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden-view'));
+            const target = document.getElementById(`view-${viewName}`);
+            if (target) target.classList.remove('hidden-view');
+            
+            // Header visibility logic
+            const header = document.getElementById('main-header');
+            if (['login', 'register'].includes(viewName)) {
+                header.classList.add('hidden-view');
+            } else {
+                header.classList.remove('hidden-view');
+                window.updateBackArrowVisibility(viewName);
+            }
+        };
+
+        window.updateBackArrowVisibility = (currentView) => {
+            const btn = document.getElementById('global-back-btn');
+            
+            // Should be hidden on dashboard root (Class Selection)
+            const isDashboardRoot = currentView === 'dashboard' && 
+                                    !document.getElementById('step-class').classList.contains('hidden');
+            
+            if (isDashboardRoot) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
+        };
+
+        window.goBack = () => {
+            // Determine logical parent view
+            const views = ['dashboard', 'study', 'quiz', 'result', 'register'];
+            const visibleView = views.find(v => !document.getElementById(`view-${v}`).classList.contains('hidden-view'));
+
+            if (visibleView === 'register') {
+                window.navigate('login');
+            } else if (visibleView === 'study') {
+                window.navigate('dashboard');
+            } else if (visibleView === 'quiz') {
+                if(confirm("Quit Quiz?")) window.navigate('study');
+            } else if (visibleView === 'result') {
+                window.navigate('dashboard');
+            } else if (visibleView === 'dashboard') {
+                // Internal Steps logic
+                if (!document.getElementById('step-dashboard-content').classList.contains('hidden')) {
+                    // Back from Subject List -> Semester List
+                    // DO NOT RESET SELECTION to keep memory
+                    document.getElementById('step-dashboard-content').classList.add('hidden');
+                    document.getElementById('step-sem').classList.remove('hidden');
+                    document.getElementById('display-class-sem').textContent = state.profile.class;
+                } else if (!document.getElementById('step-topics').classList.contains('hidden')) {
+                    // Back from Topic Selection -> Semester List
+                    document.getElementById('step-topics').classList.add('hidden');
+                    document.getElementById('step-sem').classList.remove('hidden');
+                    document.getElementById('display-class-sem').textContent = state.profile.class;
+                } else if (!document.getElementById('step-sem').classList.contains('hidden')) {
+                    // Back from Semester List -> Class List
+                    document.getElementById('step-sem').classList.add('hidden');
+                    document.getElementById('step-class').classList.remove('hidden');
+                    document.getElementById('display-class-sem').textContent = "Select your class below";
+                }
+            }
+            window.updateBackArrowVisibility('dashboard');
+        };
+
+        window.showToast = (msg) => {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 3000);
+        };
+
+        window.handleLogout = () => {
+            localStorage.removeItem('studentAppLastPhone');
+            state = { currentUserDocId: null, user: null, profile: { class: '', sem: '', pic: '', topics: [] }, enrolled: {}, selectedSubject: null, quiz: { questions: [], index: 0, score: 0, answered: false }, tempTopics: [] };
+            window.navigate('login');
+        };
+
+        // --- AUTH & DB ---
+
+        const initApp = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) { console.error(error); window.showToast("Connection Error"); }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('global-loader').classList.add('hidden-view');
+                document.getElementById('app').classList.remove('opacity-0');
+                
+                const lastPhone = localStorage.getItem('studentAppLastPhone');
+                if (lastPhone) {
+                    try {
+                        const q = query(getUsersCollection(), where("phone", "==", lastPhone));
+                        const snap = await getDocs(q);
+                        if (!snap.empty) {
+                            const doc = snap.docs[0];
+                            const data = doc.data();
+                            state.currentUserDocId = doc.id;
+                            state.user = data;
+                            // Initialize state
+                            state.profile = { 
+                                class: data.class || '', 
+                                sem: data.sem || '', 
+                                pic: data.pic || '',
+                                topics: [] // Will load dynamically
+                            };
+                            state.enrolled = data.enrolled || {}; // Load Enrolled Map
+                            
+                            await fetchLastScore();
+                            initDashboard();
+                            window.navigate('dashboard');
+                            window.showToast("Welcome back!");
+                            return;
+                        }
+                    } catch (e) { console.log("Auto-login failed", e); }
+                }
+                window.navigate('login');
+            }
+        });
+        initApp();
+
+        // Forms Handlers
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading(true, 'btn-reg-submit');
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const phone = document.getElementById('reg-phone').value;
+            const password = document.getElementById('reg-pass').value;
+
+            try {
+                const q = query(getUsersCollection(), where("phone", "==", phone));
+                const snap = await getDocs(q);
+                if (!snap.empty) { window.showToast("User exists!"); setLoading(false, 'btn-reg-submit'); return; }
+
+                const newUser = { 
+                    name, email, phone, password, 
+                    class: '', sem: '', pic: '', 
+                    enrolled: {} // NEW: Store topics per semester key
+                };
+                await addDoc(getUsersCollection(), newUser);
+                window.showToast("Account Created! Please Login.");
+                window.navigate('login');
+            } catch (err) { window.showToast("Error"); }
+            setLoading(false, 'btn-reg-submit');
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading(true, 'btn-login-submit');
+            const phone = document.getElementById('login-phone').value;
+            const pass = document.getElementById('login-pass').value;
+
+            try {
+                const q = query(getUsersCollection(), where("phone", "==", phone));
+                const snap = await getDocs(q);
+                if (snap.empty) { window.showToast("User not found."); setLoading(false, 'btn-login-submit'); return; }
+
+                let found = false;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (data.password === pass) {
+                        found = true;
+                        state.currentUserDocId = doc.id;
+                        state.user = data;
+                        state.profile = { class: data.class || '', sem: data.sem || '', pic: data.pic || '', topics: [] };
+                        state.enrolled = data.enrolled || {}; // Load Enrolled Map
+                    }
+                });
+
+                if (found) {
+                    localStorage.setItem('studentAppLastPhone', phone);
+                    window.showToast("Login Successful");
+                    await fetchLastScore();
+                    initDashboard();
+                    window.navigate('dashboard');
+                } else { window.showToast("Incorrect Password"); }
+            } catch (err) { window.showToast("Error"); }
+            setLoading(false, 'btn-login-submit');
+        });
+
+        // UPDATED: Save Logic to handle Enrolled Map
+        const saveTopicsToDB = async () => {
+            if (!state.currentUserDocId) return;
+            try {
+                // Key format: "MCA_Semester 1"
+                const key = `${state.profile.class}_${state.profile.sem}`;
+                state.enrolled[key] = state.profile.topics;
+
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', state.currentUserDocId);
+                await updateDoc(userRef, {
+                    enrolled: state.enrolled
+                });
+            } catch (err) { console.error(err); }
+        };
+        
+        const saveProfileMetaToDB = async () => {
+            if (!state.currentUserDocId) return;
+            try {
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', state.currentUserDocId);
+                await updateDoc(userRef, {
+                    class: state.profile.class,
+                    sem: state.profile.sem,
+                    pic: state.profile.pic
+                });
+            } catch(err) { console.error(err); }
+        };
+
+        const fetchLastScore = async () => {
+            try {
+                const q = query(getProgressCollection(), where("userPhone", "==", state.user.phone));
+                const snap = await getDocs(q);
+                if(!snap.empty) {
+                    let maxScore = 0;
+                    snap.forEach(d => { if(d.data().score > maxScore) maxScore = d.data().score });
+                    document.getElementById('display-score').textContent = `${maxScore}/10`;
+                }
+            } catch (err) {}
+        };
+
+        const saveScoreToDB = async (score) => {
+            try { await addDoc(getProgressCollection(), { userPhone: state.user.phone, score: score, date: new Date().toISOString() }); fetchLastScore(); } catch (err) {}
+        };
+
+        // --- DASHBOARD LOGIC ---
+
+        function initDashboard() {
+            document.getElementById('display-name').textContent = state.user.name;
+            document.getElementById('header-user-name').textContent = state.user.name;
+            const imgEl = document.getElementById('profile-img');
+            const phEl = document.getElementById('profile-placeholder');
+            if (state.profile.pic) { imgEl.src = state.profile.pic; imgEl.classList.remove('hidden'); phEl.classList.add('hidden'); }
+            else { imgEl.classList.add('hidden'); phEl.classList.remove('hidden'); }
+            renderDashboardSteps();
+        }
+
+        function renderDashboardSteps() {
+            const stepClass = document.getElementById('step-class');
+            const stepSem = document.getElementById('step-sem');
+            const stepTopics = document.getElementById('step-topics');
+            const stepContent = document.getElementById('step-dashboard-content');
+            const displayMeta = document.getElementById('display-class-sem');
+
+            // 1. Class Grid
+            document.getElementById('class-grid').innerHTML = COURSES.map(c => 
+                `<button onclick="window.selectClass('${c.name}')" class="p-4 border ${state.profile.class === c.name ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-100 text-blue-700 hover:bg-blue-50'} rounded-lg font-medium transition shadow-sm">${c.name}</button>`
+            ).join('');
+
+            // 2. Sem Grid
+            let semHtml = '';
+            if (state.profile.class) {
+                const course = COURSES.find(c => c.name === state.profile.class);
+                if(course) {
+                    for(let i=1; i<=course.totalSemesters; i++) {
+                        semHtml += `<button onclick="window.selectSem('Semester ${i}')" class="p-4 border ${state.profile.sem === `Semester ${i}` ? 'bg-green-600 text-white border-green-600' : 'border-green-100 text-green-700 hover:bg-green-50'} rounded-lg font-medium transition shadow-sm">Semester ${i}</button>`;
+                    }
+                }
+            }
+            document.getElementById('sem-grid').innerHTML = semHtml;
+
+            // 3. Flow Logic
+            stepClass.classList.add('hidden');
+            stepSem.classList.add('hidden');
+            stepTopics.classList.add('hidden');
+            stepContent.classList.add('hidden');
+
+            if (!state.profile.class) {
+                stepClass.classList.remove('hidden');
+                displayMeta.textContent = "Select your class below";
+            } else if (!state.profile.sem) {
+                stepSem.classList.remove('hidden');
+                displayMeta.textContent = `${state.profile.class}`;
+            } else if (!state.profile.topics || state.profile.topics.length === 0) {
+                // Show Topic Selection
+                stepTopics.classList.remove('hidden');
+                displayMeta.textContent = `${state.profile.class} • ${state.profile.sem}`;
+                renderTopicSelection();
+            } else {
+                // Show Dashboard Content
+                stepContent.classList.remove('hidden');
+                displayMeta.textContent = `${state.profile.class} • ${state.profile.sem}`;
+                renderSubjectGrid();
+            }
+            
+            // Check back button visibility
+            window.updateBackArrowVisibility('dashboard');
+        }
+
+        // TOPIC SELECTION FUNCTIONS
+        function renderTopicSelection() {
+            if (state.tempTopics.length === 0 && state.profile.topics.length > 0) {
+                state.tempTopics = [...state.profile.topics];
+            } else if (state.tempTopics.length === 0) {
+                state.tempTopics = [];
+            }
+
+            const courseName = state.profile.class;
+            const topics = COURSE_TOPICS[courseName] || [];
+            
+            const grid = document.getElementById('topic-grid');
+            grid.innerHTML = topics.map((t, i) => {
+                const isSelected = state.tempTopics.includes(t);
+                const isMax = state.tempTopics.length >= 8;
+                const disabledClass = (isMax && !isSelected) ? 'disabled' : '';
+                
+                return `<div onclick="window.toggleTopic('${t}')" class="topic-chip p-3 border rounded-lg text-sm font-medium flex justify-between items-center bg-white ${isSelected ? 'selected' : 'border-gray-200 text-gray-600'} ${disabledClass}">
+                    <span>${t}</span>
+                    ${isSelected ? '<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' : ''}
+                </div>`
+            }).join('');
+
+            updateTopicCounter();
+        }
+
+        window.toggleTopic = (topic) => {
+            const index = state.tempTopics.indexOf(topic);
+            if (index > -1) {
+                state.tempTopics.splice(index, 1);
+            } else {
+                if (state.tempTopics.length < 8) {
+                    state.tempTopics.push(topic);
+                }
+            }
+            renderTopicSelection(); // Re-render to update UI states
+        };
+
+        function updateTopicCounter() {
+            const count = state.tempTopics.length;
+            const counterEl = document.getElementById('topic-count');
+            const btn = document.getElementById('btn-save-topics');
+            
+            counterEl.textContent = `${count}/8`;
+            if (count >= 5 && count <= 8) {
+                btn.disabled = false;
+                counterEl.classList.add('text-green-600');
+            } else {
+                btn.disabled = true;
+                counterEl.classList.remove('text-green-600');
+            }
+        }
+
+        window.saveTopics = () => {
+            state.profile.topics = [...state.tempTopics];
+            saveTopicsToDB(); // Save to Enrolled Map
+            renderDashboardSteps();
+        };
+
+        function renderSubjectGrid() {
+            document.getElementById('subject-grid').innerHTML = state.profile.topics.map(subName => `
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition flex items-center justify-between group">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-blue-100 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-800 text-sm line-clamp-2" title="${subName}">${subName}</h4>
+                            <span class="text-xs text-gray-500">Video • Notes • Quiz</span>
+                        </div>
+                    </div>
+                    <button onclick="window.startStudy('${subName}')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 shadow-sm whitespace-nowrap">Start</button>
+                </div>
+            `).join('');
+        }
+
+        // NAVIGATION LOGIC UPDATED
+        window.selectClass = (cls) => { 
+            state.profile.class = cls; 
+            // Reset lower levels
+            state.profile.sem = ''; 
+            state.profile.topics = []; 
+            state.tempTopics = [];
+            
+            saveProfileMetaToDB(); 
+            renderDashboardSteps(); 
+        }
+
+        window.selectSem = (sem) => { 
+            state.profile.sem = sem;
+            
+            // KEY LOGIC: Check if topics already enrolled
+            const key = `${state.profile.class}_${state.profile.sem}`;
+            if (state.enrolled && state.enrolled[key] && state.enrolled[key].length > 0) {
+                state.profile.topics = state.enrolled[key]; // Load saved topics
+            } else {
+                state.profile.topics = []; // Reset for selection
+            }
+            state.tempTopics = [];
+            
+            saveProfileMetaToDB(); 
+            renderDashboardSteps(); 
+        }
+
+        window.resetSelection = (type) => { 
+            if(type==='class') { state.profile.class = ''; state.profile.sem = ''; state.profile.topics = []; } 
+            if(type==='sem') { state.profile.sem = ''; state.profile.topics = []; }
+            if(type==='topics') { state.profile.topics = []; state.tempTopics = []; }
+            
+            // Note: We don't clear from DB, just local view navigation
+            renderDashboardSteps(); 
+        }
+
+        // Image Handling
+        window.handleImageUpload = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('upload-spinner').classList.remove('hidden');
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const MAX_SIZE = 300; 
+                    let width = img.width, height = img.height;
+                    if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+                    else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
+                    canvas.width = width; canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    state.profile.pic = canvas.toDataURL('image/jpeg', 0.7);
+                    saveProfileMetaToDB();
+                    initDashboard();
+                    document.getElementById('upload-spinner').classList.add('hidden');
+                }
+            }
+        };
+
+        // --- STUDY LOGIC ---
+        window.startStudy = (subName) => {
+            // Find content by name or default
+            let content = STUDY_CONTENT[subName];
+            if (!content) {
+                // If not exact match, use default but keep the title
+                content = { ...STUDY_CONTENT.default, title: subName };
+            }
+            
+            state.selectedSubject = { id: subName, name: subName }; // Mock obj
+            
+            document.getElementById('study-title').textContent = content.title;
+            document.getElementById('study-text').textContent = content.text;
+            document.getElementById('study-algo').textContent = content.algorithm;
+            document.getElementById('video-thumb').src = `https://img.youtube.com/vi/${content.video}/maxresdefault.jpg`;
+            document.getElementById('video-link').href = `https://www.youtube.com/watch?v=${content.video}`;
+            
+            window.navigate('study');
+        };
+
+        // --- QUIZ LOGIC (Simplified for brevity) ---
+        window.startQuiz = () => {
+            const shuffled = [...QUESTION_POOL].sort(() => 0.5 - Math.random());
+            state.quiz.questions = shuffled.slice(0, 10);
+            state.quiz.index = 0; state.quiz.score = 0; state.quiz.answered = false;
+            window.navigate('quiz');
+            renderQuestion();
+        };
+
+        const renderQuestion = () => {
+            const q = state.quiz.questions[state.quiz.index];
+            document.getElementById('q-number').textContent = state.quiz.index + 1;
+            document.getElementById('q-score').textContent = state.quiz.score;
+            document.getElementById('q-text').textContent = q.question;
+            document.getElementById('q-feedback').classList.add('hidden');
+            state.quiz.answered = false;
+            document.getElementById('q-options').innerHTML = q.options.map((opt, i) => `<button onclick="window.handleAnswer(${i})" id="opt-${i}" class="p-4 rounded-lg border-2 text-left transition font-medium text-gray-700 bg-white hover:bg-gray-50 border-gray-200 shadow-sm w-full"><span class="mr-2 opacity-50 font-bold">${String.fromCharCode(65+i)}.</span> ${opt}</button>`).join('');
+            const btnNext = document.getElementById('btn-next');
+            btnNext.innerHTML = (state.quiz.index === 9) ? "Finish Quiz" : `Next <svg class="inline w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>`;
+        };
+
+        window.handleAnswer = (idx) => {
+            if (state.quiz.answered) return;
+            state.quiz.answered = true;
+            const q = state.quiz.questions[state.quiz.index];
+            const isCorrect = idx === q.correct;
+            const btn = document.getElementById(`opt-${idx}`);
+            const correctBtn = document.getElementById(`opt-${q.correct}`);
+            correctBtn.classList.replace('border-gray-200', 'border-green-500'); correctBtn.classList.replace('bg-white', 'bg-green-100'); correctBtn.classList.replace('text-gray-700', 'text-green-800');
+            if (!isCorrect) { btn.classList.replace('border-gray-200', 'border-red-500'); btn.classList.replace('bg-white', 'bg-red-100'); btn.classList.replace('text-gray-700', 'text-red-800'); } else { state.quiz.score++; document.getElementById('q-score').textContent = state.quiz.score; }
+            document.getElementById('q-explanation').textContent = q.explanation;
+            document.getElementById('q-feedback').classList.remove('hidden');
+        };
+
+        window.nextQuestion = () => { if (state.quiz.index < 9) { state.quiz.index++; renderQuestion(); } else { saveScoreToDB(state.quiz.score); showResult(); } };
+        const showResult = () => { const s = state.quiz.score; document.getElementById('final-score').textContent = `${s} / 10`; window.navigate('result'); };
+        window.quitQuiz = () => window.navigate('study');
+        function setLoading(isLoading, btnId) { const btn = document.getElementById(btnId); if(isLoading) { btn.disabled = true; btn.innerHTML = `<div class="loader w-5 h-5 border-white border-t-transparent"></div> Processing...`; } else { btn.disabled = false; btn.innerHTML = (btnId === 'btn-login-submit') ? 'Login' : 'Create Account'; } }
+
+    </script>
+</body>
+</html>
